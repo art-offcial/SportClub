@@ -1,9 +1,8 @@
-﻿/*
+/*
     Проект: Справочно-информационная система "Спортивный клуб"
     Язык: C#
     Выполнил: студент Art Jud
     Группа: 9/2-РПО-24/1
-
 
     Исправленная версия
 */
@@ -16,15 +15,20 @@ using System.Runtime.Serialization.Formatters.Binary;
 
 namespace SportClub
 {
+    // для себя: использовал Serializable, потому что бинарная сериализация проще всего
+    // сначала пытался через BinaryWriter вручную, но запутался в полях
+    // Serializable позволяет одной строчкой сохранить весь объект
     [Serializable]
     public class Member
     {
-        public int Id;
-        public string LastName;
-        public string FirstName;
-        public string Phone;
-        public string RegDate;
+        // поля сделал публичными, потому что класс простой и не требует сложной инкапсуляции
+        public int Id;          // уникальный идентификатор клиента
+        public string LastName; // фамилия
+        public string FirstName; // имя
+        public string Phone;     // номер телефона (строка, чтобы можно было с плюсом и скобками)
+        public string RegDate;   // дата регистрации, храню как строку, чтобы не возиться с DateTime
 
+        // конструктор для удобного создания объекта
         public Member(int id, string lastName, string firstName, string phone, string regDate)
         {
             Id = id;
@@ -35,14 +39,15 @@ namespace SportClub
         }
     }
 
+    // структура для тренера — аналогично клиенту
     [Serializable]
     public class Trainer
     {
-        public int Id;
-        public string LastName;
-        public string FirstName;
-        public string Specialization;
-        public int Experience;
+        public int Id;                 // ID тренера
+        public string LastName;        // фамилия
+        public string FirstName;       // имя
+        public string Specialization;  // чем занимается (йога, бокс, плавание и т.д.)
+        public int Experience;         // стаж в годах, целое число
 
         public Trainer(int id, string lastName, string firstName, string specialization, int experience)
         {
@@ -54,14 +59,15 @@ namespace SportClub
         }
     }
 
+    // структура для тренировки — связывает клиента и тренера
     [Serializable]
     public class Workout
     {
-        public int Id;
-        public int MemberId;
-        public int TrainerId;
-        public string WorkoutDate;
-        public int Duration;
+        public int Id;           // ID тренировки
+        public int MemberId;     // ссылка на клиента (внешний ключ)
+        public int TrainerId;    // ссылка на тренера (внешний ключ)
+        public string WorkoutDate; // дата проведения
+        public int Duration;     // длительность в минутах
 
         public Workout(int id, int memberId, int trainerId, string workoutDate, int duration)
         {
@@ -75,10 +81,16 @@ namespace SportClub
 
     class Program
     {
+        // пути к файлам: решил использовать BaseDirectory, чтобы не было проблем с переносом на другой компьютер
+        // AppDomain.CurrentDomain.BaseDirectory — это папка, где лежит .exe файл
+        // так файлы всегда будут рядом с программой, независимо от того, куда её скопировали
         static string memberFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "members.bin");
         static string trainerFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "trainers.bin");
         static string workoutFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "workouts.bin");
 
+        // сделал обобщённый метод, чтобы не писать три одинаковых метода для сохранения
+        // T — это тип: Member, Trainer или Workout. Один метод работает для всех
+        // FileMode.Create — перезаписывает файл, если он существует
         static void SaveList<T>(List<T> list, string filePath)
         {
             try
@@ -95,6 +107,8 @@ namespace SportClub
             }
         }
 
+        // загрузка с проверкой наличия файла, чтобы программа не падала
+        // если файла нет — возвращаем пустой список, чтобы не было NullReferenceException
         static List<T> LoadList<T>(string filePath)
         {
             if (!File.Exists(filePath))
@@ -110,15 +124,21 @@ namespace SportClub
             }
             catch
             {
+                // если файл битый, просто возвращаем пустой список, чтобы программа продолжила работу
+                // это лучше, чем вылет с ошибкой на ровном месте
                 return new List<T>();
             }
         }
 
+        // ДОБАВЛЕНИЕ ДАННЫХ 
+
+        // добавление клиента — без сложной валидации, чтобы не усложнять код
+        // в учебном проекте это допустимо
         static void AddMember()
         {
-            List<Member> members = LoadList<Member>(memberFile);
+            List<Member> members = LoadList<Member>(memberFile); // загружаем существующих клиентов
             Console.Write("Введите ID клиента: ");
-            int id = int.Parse(Console.ReadLine());
+            int id = int.Parse(Console.ReadLine()); // здесь может быть исключение, если введут буквы, но для учебного проекта сойдёт
             Console.Write("Фамилия: ");
             string lastName = Console.ReadLine();
             Console.Write("Имя: ");
@@ -128,8 +148,8 @@ namespace SportClub
             Console.Write("Дата регистрации (ДД.ММ.ГГГГ): ");
             string regDate = Console.ReadLine();
 
-            members.Add(new Member(id, lastName, firstName, phone, regDate));
-            SaveList<Member>(members, memberFile);
+            members.Add(new Member(id, lastName, firstName, phone, regDate)); // добавляем нового
+            SaveList<Member>(members, memberFile); // сохраняем обратно в файл
             Console.WriteLine("Клиент добавлен!");
         }
 
@@ -171,6 +191,11 @@ namespace SportClub
             Console.WriteLine("Тренировка записана!");
         }
 
+        // ОТОБРАЖЕНИЕ ДАННЫХ
+
+        // здесь подбирал ширину колонок вручную, чтобы таблица красиво выглядела
+        // -8 значит, что поле занимает 8 символов и выравнивается по левому краю
+        // new string('-', 75) — рисует линию из 75 дефисов
         static void ShowAllMembers()
         {
             List<Member> members = LoadList<Member>(memberFile);
@@ -222,11 +247,14 @@ namespace SportClub
             }
         }
 
+        // УДАЛЕНИЕ
+
         static void DeleteMemberById()
         {
             List<Member> members = LoadList<Member>(memberFile);
             Console.Write("Введите ID клиента для удаления: ");
             int id = int.Parse(Console.ReadLine());
+            // RemoveAll удаляет все элементы, удовлетворяющие условию, и возвращает количество удалённых
             int removed = members.RemoveAll(m => m.Id == id);
             if (removed > 0)
             {
@@ -239,6 +267,10 @@ namespace SportClub
             }
         }
 
+        //  ПОИСК (МИНИМУМ 3 КРИТЕРИЯ)
+
+        // здесь я переделал поиск, теперь он не чувствителен к регистру букв
+        // преподаватель сказала исправить, я добавил StringComparison.OrdinalIgnoreCase
         static void SearchSystem()
         {
             Console.WriteLine("\n===== ПОИСК =====");
@@ -251,27 +283,29 @@ namespace SportClub
 
             switch (choice)
             {
-                case 1:
+                case 1: // поиск клиента по фамилии (без учёта регистра)
                     Console.Write("Введите фамилию: ");
                     string last = Console.ReadLine();
                     var members = LoadList<Member>(memberFile);
-                    // ИСПРАВЛЕНО: теперь ищет без учёта регистра
+                    // исправлено: теперь ищет без учёта регистра
+                    // Equals с OrdinalIgnoreCase — это правильный способ
                     var foundMembers = members.Where(m => m.LastName.Equals(last, StringComparison.OrdinalIgnoreCase));
                     foreach (var m in foundMembers)
                         Console.WriteLine($"{m.LastName} {m.FirstName}, тел. {m.Phone}");
                     if (!foundMembers.Any()) Console.WriteLine("Не найдено.");
                     break;
-                case 2:
+                case 2: // поиск тренера по специализации (частичное совпадение, без учёта регистра)
                     Console.Write("Специализация: ");
                     string spec = Console.ReadLine();
                     var trainers = LoadList<Trainer>(trainerFile);
-                    // ИСПРАВЛЕНО: ищет частично и без учёта регистра
+                    // исправлено: ищет частично и без учёта регистра
+                    // ToLower() — костыль, но работает. В идеале надо StringComparison, но Contains его не поддерживает
                     var foundTrainers = trainers.Where(t => t.Specialization.ToLower().Contains(spec.ToLower()));
                     foreach (var t in foundTrainers)
                         Console.WriteLine($"{t.LastName} {t.FirstName} — {t.Specialization}");
                     if (!foundTrainers.Any()) Console.WriteLine("Не найдено.");
                     break;
-                case 3:
+                case 3: // поиск тренировок по точной дате
                     Console.Write("Дата (ДД.ММ.ГГГГ): ");
                     string date = Console.ReadLine();
                     var workouts = LoadList<Workout>(workoutFile);
@@ -280,7 +314,7 @@ namespace SportClub
                         Console.WriteLine($"Тренировка ID {w.Id}, клиент {w.MemberId}, тренер {w.TrainerId}, {w.Duration} мин");
                     if (!foundWorkouts.Any()) Console.WriteLine("Не найдено.");
                     break;
-                case 4:
+                case 4: // поиск тренеров со стажем больше N
                     Console.Write("Минимальный стаж: ");
                     int minExp = int.Parse(Console.ReadLine());
                     var trainers2 = LoadList<Trainer>(trainerFile);
@@ -295,6 +329,9 @@ namespace SportClub
             }
         }
 
+        // СТАТИСТИКА (МИНИМУМ 2 ХАРАКТЕРИСТИКИ)
+
+        // статистика — минимальный набор, как требовалось в задании
         static void SummaryStats()
         {
             var trainers = LoadList<Trainer>(trainerFile);
@@ -303,6 +340,7 @@ namespace SportClub
 
             Console.WriteLine("\n========== СТАТИСТИКА ==========");
 
+            // 1-я характеристика: количество тренировок у каждого тренера
             Console.WriteLine("\n1) Количество тренировок у тренеров:");
             foreach (var t in trainers)
             {
@@ -310,6 +348,7 @@ namespace SportClub
                 Console.WriteLine($"{t.LastName} {t.FirstName}: {count} тренировок");
             }
 
+            // 2-я характеристика: общее время тренировок конкретного клиента (в минутах)
             if (members.Count > 0)
             {
                 Console.Write("\n2) Введите ID клиента для подсчёта его минут: ");
@@ -319,6 +358,9 @@ namespace SportClub
             }
         }
 
+        //  СОРТИРОВКА
+
+        // сортируем тренеров по разным критериям (фамилия, стаж) в прямом и обратном порядке
         static void SortTrainers()
         {
             List<Trainer> trainers = LoadList<Trainer>(trainerFile);
@@ -357,14 +399,18 @@ namespace SportClub
 
             SaveList<Trainer>(trainers, trainerFile);
             Console.WriteLine("Сортировка выполнена!");
-            ShowAllTrainers();
+            ShowAllTrainers(); // показываем результат
         }
+
+        // ГЛАВНОЕ МЕНЮ 
 
         static void MainMenu()
         {
             int choice;
             do
             {
+                // меню сделал без замысловатой графики, чтобы в любой консоли работало
+                // псевдографика типа ┌──┐ иногда не отображается, поэтому использую обычные символы
                 Console.WriteLine("\n==================================================");
                 Console.WriteLine("   СПОРТИВНЫЙ КЛУБ - СИСТЕМА УЧЁТА ТРЕНИРОВОК");
                 Console.WriteLine("==================================================");
@@ -381,6 +427,7 @@ namespace SportClub
                 switch (choice)
                 {
                     case 1:
+                        // подменю для добавления: выбираем, кого добавлять
                         Console.Write("1 - Клиент, 2 - Тренер, 3 - Тренировка: ");
                         int sub = int.Parse(Console.ReadLine());
                         if (sub == 1) AddMember();
@@ -389,6 +436,7 @@ namespace SportClub
                         else Console.WriteLine("Неверно.");
                         break;
                     case 2:
+                        // показываем все три таблицы
                         ShowAllMembers();
                         ShowAllTrainers();
                         ShowAllWorkouts();
@@ -415,16 +463,22 @@ namespace SportClub
             } while (choice != 0);
         }
 
+        //  ТОЧКА ВХОДА
+
         static void Main(string[] args)
         {
+            // чтобы русские буквы нормально отображались в консоли (иначе кракозябры)
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            Console.Title = "Спортивный клуб - Курсовой проект";
+            Console.Title = "Спортивный клуб - Курсовой проект"; // заголовок окна консоли
+            
+            // приветствие и информация о файлах
             Console.WriteLine("\n=== Курсовой проект: Спортивный клуб (C#) ===");
             Console.WriteLine($"Файлы данных:\n{memberFile}\n{trainerFile}\n{workoutFile}");
             Console.WriteLine("\nЕсли файлов нет — создадутся автоматически при добавлении.");
             Console.WriteLine("Нажмите любую клавишу для входа в систему...");
-            Console.ReadKey();
-            MainMenu();
+            Console.ReadKey(); // ждём нажатия, чтобы пользователь успел прочитать
+            
+            MainMenu(); // запускаем главное меню
         }
     }
 }
